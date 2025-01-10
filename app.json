@@ -1,4 +1,13 @@
 {
   "name": "test",
-  "slug": "test"
+  "slug": "test",
+  "expo": {
+    "ios": {
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    }
+  }
 }

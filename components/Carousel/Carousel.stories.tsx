@@ -51,7 +51,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <View style={{ flex: 1, backgroundColor: '#f5f5f5', height: '100vh' }}>
+        <View style={{ flex: 1, backgroundColor: '#f5f5f5', height: '100%' }}>
         <Story />
       </View>
     ),

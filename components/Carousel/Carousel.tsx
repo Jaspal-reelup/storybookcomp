@@ -15,13 +15,13 @@ import {
   SafeAreaView,
   StatusBar,
 } from "react-native";
-import { Video } from "expo-av";
+import { ResizeMode, Video } from "expo-av";
 
 const { width: WINDOW_WIDTH } = Dimensions.get("window");
 const DEFAULT_ITEM_WIDTH = WINDOW_WIDTH;
 const DEFAULT_ITEM_HEIGHT = WINDOW_WIDTH * (16 / 9);
 
-interface VideoItem {
+export interface VideoItem {
   id: string;
   title: string;
   thumbnail: string;
@@ -32,7 +32,7 @@ interface VideoItem {
   author: string;
 }
 
-interface VideoCarouselProps {
+export interface VideoCarouselProps {
   onVideoPress?: (video: VideoItem) => void;
   showControls?: boolean;
   width?: number;
@@ -55,7 +55,7 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
-  const videoRef = useRef(null);
+  const videoRef = useRef<Video | null>(null);
 
   useEffect(() => {
     if(!apiKey)return
@@ -203,7 +203,7 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
             source={{ uri: selectedVideo.short_video }}
             style={dynamicStyles.video}
             useNativeControls
-            resizeMode="contain"
+            resizeMode={ResizeMode.CONTAIN}
             shouldPlay={modalVisible}
             isLooping={false}
             onError={(error: any) => console.error("Video Error:", error)}

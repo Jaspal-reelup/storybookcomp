@@ -1,7 +1,7 @@
 {
-  "name": "test",
-  "version": "1.0.0",
-  "main": "node_modules/expo/AppEntry.js",
+  "name": "jas-test",
+  "version": "1.0.2",
+  "main": "./lib/commonjs/index.js",
   "license": "MIT",
   "scripts": {
     "start": "expo start",
@@ -13,27 +13,40 @@
     "storybook-generate": "sb-rn-get-stories --config-path .ondevice",
     "storybook": "cross-env EXPO_PUBLIC_STORYBOOK_ENABLED='true' expo start",
     "storybook:ios": "cross-env EXPO_PUBLIC_STORYBOOK_ENABLED='true' expo start --ios",
-    "storybook:android": "cross-env EXPO_PUBLIC_STORYBOOK_ENABLED='true' expo start --android"
+    "storybook:android": "cross-env EXPO_PUBLIC_STORYBOOK_ENABLED='true' expo start --android",
+    "prepare": "bob build"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-native": ">=0.60.0",
+    "@gorhom/bottom-sheet": ">=4.0.0",
+    "react-native-gesture-handler": ">=2.0.0",
+    "react-native-reanimated": ">=2.0.0",
+    "react-native-safe-area-context": ">=4.0.0",
+    "react-native-svg": ">=12.0.0",
+    "expo-av": ">=15.0.0",
+    "expo-constants": ">=17.0.0",
+    "expo-status-bar": ">=2.0.0"
   },
   "dependencies": {
-    "@gorhom/bottom-sheet": "^5.0.6",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/datetimepicker": "8.2.0",
-    "@react-native-community/slider": "4.5.5",
-    "expo": "~52.0.17",
-    "expo-av": "~15.0.1",
-    "expo-constants": "~17.0.3",
-    "expo-status-bar": "~2.0.0",
+    "@react-native-community/slider": "4.5.5"
+  },
+  "devDependencies": {
+    "@gorhom/bottom-sheet": "^5.0.6",
     "react": "18.3.1",
-    "react-dom": "18.3.1",
     "react-native": "0.76.3",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-reanimated": "~3.16.1",
     "react-native-safe-area-context": "4.12.0",
     "react-native-svg": "15.8.0",
-    "react-native-web": "~0.19.13"
-  },
-  "devDependencies": {
+    "expo": "~52.0.17",
+    "expo-av": "~15.0.1",
+    "expo-constants": "~17.0.3",
+    "expo-status-bar": "~2.0.0",
+    "react-dom": "18.3.1",
+    "react-native-web": "~0.19.13",
     "@babel/core": "^7.24.0",
     "@babel/preset-env": "^7.25.4",
     "@chromatic-com/storybook": "^2.0.2",
@@ -58,6 +71,7 @@
     "babel-plugin-react-docgen-typescript": "^1.5.1",
     "babel-plugin-react-native-web": "^0.19.10",
     "cross-env": "^7.0.3",
+    "react-native-builder-bob": "^0.35.2",
     "storybook": "^8.4.7",
     "typescript": "~5.3.3"
   },
@@ -72,5 +86,54 @@
       "react-docgen-typescript": "2.2.2"
     }
   },
-  "private": true
+  "source": "./components/index.js",
+  "module": "./lib/module/index.js",
+  "types": "./lib/typescript/commonjs/components/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./lib/typescript/module/components/index.d.ts",
+        "default": "./lib/module/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/components/index.d.ts",
+        "default": "./lib/commonjs/index.js"
+      }
+    }
+  },
+  "files": [
+    "components",
+    "lib",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__"
+  ],
+  "react-native-builder-bob": {
+    "source": "components",
+    "output": "lib",
+    "targets": [
+      [
+        "commonjs",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "esm": true
+        }
+      ]
+    ]
+  },
+  "eslintIgnore": [
+    "node_modules/",
+    "lib/"
+  ]
 }

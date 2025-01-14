@@ -20,6 +20,7 @@ import { ResizeMode, Video } from "expo-av";
 const { width: WINDOW_WIDTH } = Dimensions.get("window");
 const DEFAULT_ITEM_WIDTH = WINDOW_WIDTH;
 const DEFAULT_ITEM_HEIGHT = WINDOW_WIDTH * (16 / 9);
+const BUFFER_SIZE = 1; // Number of items to load before and after visible items
 
 export interface VideoItem {
   id: string;
@@ -30,14 +31,17 @@ export interface VideoItem {
   duration: string;
   views: number;
   author: string;
+  isLoaded?: boolean;
 }
 
 export interface VideoCarouselProps {
-  onVideoPress?: (video: VideoItem) => void;
-  showControls?: boolean;
-  width?: number;
-  height?: number;
-  apiKey?: string;
+    onVideoPress?: (video: VideoItem) => void;
+    showControls?: boolean;
+    width?: number;
+    height?: number;
+    apiKey?: string;
+    isLazy?: boolean;
+    batchSize?: number; 
 }
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
@@ -48,17 +52,20 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
   width = DEFAULT_ITEM_WIDTH,
   height = DEFAULT_ITEM_HEIGHT,
   apiKey,
+  isLazy = false,
+  batchSize = BUFFER_SIZE * 2 + 1
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [visibleIndices, setVisibleIndices] = useState<number[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const videoRef = useRef<Video | null>(null);
 
   useEffect(() => {
-    if(!apiKey)return
+    if (!apiKey) return;
     fetch('https://release.reelup.io/api/reels-data', {
       method: "GET",
       headers: {
@@ -73,12 +80,38 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
         return response.json();
       })
       .then((data) => {
-        setVideos(data.slice(0, 10)); // Assuming the response has a `data` field
+        const initialVideos = data.map((video: VideoItem) => ({
+          ...video,
+          isLoaded: false,
+        }));
+        setVideos(initialVideos);
       })
       .catch((error) => {
         console.error("Error fetching videos:", error);
       });
   }, []);
+
+  // Update visible indices when active index changes
+  useEffect(() => {
+    if (!isLazy) return;
+
+    const start = Math.max(0, activeIndex - BUFFER_SIZE);
+    const end = Math.min(videos.length - 1, activeIndex + BUFFER_SIZE);
+    const newVisibleIndices = Array.from(
+      { length: end - start + 1 },
+      (_, i) => start + i
+    );
+
+    setVisibleIndices(newVisibleIndices);
+    
+    // Mark videos as loaded
+    setVideos((prevVideos) =>
+      prevVideos.map((video, index) => ({
+        ...video,
+        isLoaded: video.isLoaded || newVisibleIndices.includes(index),
+      }))
+    );
+  }, [activeIndex, videos.length, isLazy]);
 
   const viewabilityConfig: ViewabilityConfig = {
     itemVisiblePercentThreshold: 50,
@@ -94,6 +127,59 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
     []
   );
 
+  const shouldRenderItem = (index: number) => {
+    if (!isLazy) return true;
+    return visibleIndices.includes(index);
+  };
+
+  const renderItem = (
+    item: VideoItem,
+    index: number,
+    scrollX: Animated.Value
+  ) => {
+    const inputRange = [
+      (index - 1) * width,
+      index * width,
+      (index + 1) * width,
+    ];
+
+    const scale = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.95, 1, 0.95],
+      extrapolate: "clamp",
+    });
+
+    if (!shouldRenderItem(index)) {
+      return (
+        <View style={[dynamicStyles.itemContainer, dynamicStyles.placeholder]} />
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => handleVideoPress(item)}
+        style={dynamicStyles.itemContainer}
+      >
+        <Animated.View
+          style={[dynamicStyles.itemWrapper, { transform: [{ scale }] }]}
+        >
+          <Image
+            source={{ uri: item.thumbnail }}
+            style={dynamicStyles.thumbnail}
+            resizeMode="cover"
+          />
+          {showControls && (
+            <View style={dynamicStyles.playButton}>
+              <View style={dynamicStyles.playIcon} />
+            </View>
+          )}
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  };
+
+  // ... rest of the component remains the same ...
   const handleVideoPress = (video: VideoItem) => {
     setSelectedVideo(video);
     setModalVisible(true);
@@ -138,47 +224,6 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
     );
   };
 
-  const renderItem = (
-    item: VideoItem,
-    index: number,
-    scrollX: Animated.Value
-  ) => {
-    const inputRange = [
-      (index - 1) * width,
-      index * width,
-      (index + 1) * width,
-    ];
-
-    const scale = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.95, 1, 0.95],
-      extrapolate: "clamp",
-    });
-
-    return (
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={() => handleVideoPress(item)}
-        style={dynamicStyles.itemContainer}
-      >
-        <Animated.View
-          style={[dynamicStyles.itemWrapper, { transform: [{ scale }] }]}
-        >
-          <Image
-            source={{ uri: item.thumbnail }}
-            style={dynamicStyles.thumbnail}
-            resizeMode="cover"
-          />
-          {showControls && (
-            <View style={dynamicStyles.playButton}>
-              <View style={dynamicStyles.playIcon} />
-            </View>
-          )}
-        </Animated.View>
-      </TouchableOpacity>
-    );
-  };
-
   const renderVideoModal = () => {
     if (!selectedVideo) return null;
 
@@ -216,33 +261,35 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
     );
   };
 
-  if(!apiKey)return (
+  if (!apiKey) return (
     <View style={dynamicStyles.noapicont}>
-        <Text>Please pass value api key</Text>
+      <Text>Please pass value of api key</Text>
     </View>
-  )
+  );
 
   return (
     <View style={dynamicStyles.container}>
-      <AnimatedFlatList
-        ref={flatListRef}
-        data={videos}
-        renderItem={({ item, index }:any) =>
-          renderItem(item, index, scrollX)
-        }
-        keyExtractor={(item:any) => item.id}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={width}
-        decelerationRate="fast"
-        viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
-      />
+     <AnimatedFlatList
+  ref={flatListRef}
+  data={videos}
+  renderItem={({ item, index }: any) => renderItem(item, index, scrollX)}
+  keyExtractor={(item: any) => item.id}
+  horizontal
+  pagingEnabled
+  showsHorizontalScrollIndicator={false}
+  snapToInterval={width}
+  decelerationRate="fast"
+  viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
+  onScroll={Animated.event(
+    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+    { useNativeDriver: true }
+  )}
+  scrollEventThrottle={16}
+  initialNumToRender={isLazy ? batchSize : undefined} // Use batchSize here
+  maxToRenderPerBatch={isLazy ? batchSize : undefined} // Use batchSize here
+  windowSize={isLazy ? batchSize : undefined} // Use batchSize here
+/>
+
       {showControls && renderProgressBar()}
       {renderVideoModal()}
     </View>
@@ -268,6 +315,11 @@ const createStyles = (width: number, height: number) =>
     thumbnail: {
       width: "100%",
       height: "100%",
+    },
+    placeholder: {
+      backgroundColor: "#f0f0f0",
+      justifyContent: "center",
+      alignItems: "center",
     },
     progressContainer: {
       flexDirection: "row",
@@ -303,40 +355,40 @@ const createStyles = (width: number, height: number) =>
       fontWeight: "bold",
     },
     playButton: {
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        width: 60,
-        height: 60,
-        marginLeft: -30,
-        marginTop: -30,
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
-        borderRadius: 30,
-        justifyContent: "center",
-        alignItems: "center",
-      },
-      playIcon: {
-        width: 0,
-        height: 0,
-        marginLeft: 5,
-        backgroundColor: "transparent",
-        borderStyle: "solid",
-        borderLeftWidth: 20,
-        borderRightWidth: 0,
-        borderBottomWidth: 15,
-        borderTopWidth: 15,
-        borderLeftColor: "white",
-        borderRightColor: "transparent",
-        borderBottomColor: "transparent",
-        borderTopColor: "transparent",
-      },
-      noapicont:{
-        width: width,
-        height: height,
-        margin: 2,
-        borderRadius: 8,
-        backgroundColor: "lightgray",
-        justifyContent:'center',
-        alignItems:'center'
+      position: "absolute",
+      top: "50%",
+      left: "50%",
+      width: 60,
+      height: 60,
+      marginLeft: -30,
+      marginTop: -30,
+      backgroundColor: "rgba(0, 0, 0, 0.6)",
+      borderRadius: 30,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    playIcon: {
+      width: 0,
+      height: 0,
+      marginLeft: 5,
+      backgroundColor: "transparent",
+      borderStyle: "solid",
+      borderLeftWidth: 20,
+      borderRightWidth: 0,
+      borderBottomWidth: 15,
+      borderTopWidth: 15,
+      borderLeftColor: "white",
+      borderRightColor: "transparent",
+      borderBottomColor: "transparent",
+      borderTopColor: "transparent",
+    },
+    noapicont: {
+      width: width/3,
+      height: height/3,
+      margin: 2,
+      borderRadius: 8,
+      backgroundColor: "lightgray",
+      justifyContent: 'center',
+      alignItems: 'center'
     },
   });

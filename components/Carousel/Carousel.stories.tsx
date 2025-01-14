@@ -64,22 +64,35 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    onVideoPress: action("onVideoPress"),
-    showControls: true,
-    apiKey:'BaD9xAoNJE5aVdVTflgvRIxjetKq2UCN',
-    width:200,
-    height:400
-  }
-};
-
-
-
-export const SingleVideo: Story = {
-  args: {
     
     onVideoPress: action("onVideoPress")
   }
 };
+export const WithLazyLoading: Story = {
+  args: {
+    onVideoPress: action("onVideoPress"),
+    showControls: true,
+    apiKey:'BaD9xAoNJE5aVdVTflgvRIxjetKq2UCN',
+    width:200,
+    height:400,
+    isLazy:true,
+    batchSize: 5,
+  }
+};
+
+export const WithoutLazyLoading: Story = {
+    args: {
+      onVideoPress: action("onVideoPress"),
+      showControls: true,
+      apiKey:'BaD9xAoNJE5aVdVTflgvRIxjetKq2UCN',
+      width:200,
+      height:400,
+      batchSize: 5,
+    }
+  };
+
+
+
 
 
 

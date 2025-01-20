@@ -1,11 +1,11 @@
 yarn run v1.22.22
-$ storybook build --output-dir=/var/folders/s6/wmlw_sg10cx360htz4s3gfr40000gn/T/chromatic--52185-6l99e6Hhoz27
+$ storybook build --output-dir=/var/folders/s6/wmlw_sg10cx360htz4s3gfr40000gn/T/chromatic--98576-LIQOwKVSkSzC
 [1m@storybook/core v8.4.7
 [22m
-info => Cleaning outputDir: [36m../../../var/folders/s6/wmlw_sg10cx360htz4s3gfr40000gn/T/chromatic--52185-6l99e6Hhoz27[39m
+info => Cleaning outputDir: [36m../../../var/folders/s6/wmlw_sg10cx360htz4s3gfr40000gn/T/chromatic--98576-LIQOwKVSkSzC[39m
 info => Loading presets
 info => Building manager..
-info => Manager built ([38;2;181;126;229m84 ms[39m)
+info => Manager built ([38;2;181;126;229m90 ms[39m)
 info => Building preview..
 WARN No story files found for the specified pattern: [34mcomponents/**/*.stories.mdx[39m
 info Addon-docs: using MDX3
@@ -16,16 +16,16 @@ info Using tsconfig paths for react-docgen
 WARN asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
 WARN This can impact web performance.
 WARN Assets: 
-WARN   995.3f012ac7.iframe.bundle.js (475 KiB)
+WARN   246.d195ef04.iframe.bundle.js (479 KiB)
 WARN   41.5f4b947c.iframe.bundle.js (652 KiB)
 WARN   878.bcc2ffee.iframe.bundle.js (972 KiB)
 WARN entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
 WARN Entrypoints:
 WARN   main (664 KiB)
-WARN       runtime~main.301dd05a.iframe.bundle.js
+WARN       runtime~main.b21cfdc7.iframe.bundle.js
 WARN       41.5f4b947c.iframe.bundle.js
-WARN       main.a0c014aa.iframe.bundle.js
+WARN       main.9b9058dc.iframe.bundle.js
 WARN 
-info => Preview built ([38;2;181;126;229m8.25 s[39m)
-info => Output directory: /var/folders/s6/wmlw_sg10cx360htz4s3gfr40000gn/T/chromatic--52185-6l99e6Hhoz27
-Done in 10.54s.
+info => Preview built ([38;2;181;126;229m8.8 s[39m)
+info => Output directory: /var/folders/s6/wmlw_sg10cx360htz4s3gfr40000gn/T/chromatic--98576-LIQOwKVSkSzC
+Done in 10.97s.

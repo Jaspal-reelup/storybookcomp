@@ -14,13 +14,14 @@ import {
   Platform,
   SafeAreaView,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { ResizeMode, Video } from "expo-av";
 
 const { width: WINDOW_WIDTH } = Dimensions.get("window");
 const DEFAULT_ITEM_WIDTH = WINDOW_WIDTH;
 const DEFAULT_ITEM_HEIGHT = WINDOW_WIDTH * (16 / 9);
-const BUFFER_SIZE = 1; // Number of items to load before and after visible items
+const BUFFER_SIZE = 2;
 
 export interface VideoItem {
   id: string;
@@ -35,13 +36,13 @@ export interface VideoItem {
 }
 
 export interface VideoCarouselProps {
-    onVideoPress?: (video: VideoItem) => void;
-    showControls?: boolean;
-    width?: number;
-    height?: number;
-    apiKey?: string;
-    isLazy?: boolean;
-    batchSize?: number; 
+  onVideoPress?: (video: VideoItem) => void;
+  showControls?: boolean;
+  width?: number;
+  height?: number;
+  apiKey?: string;
+  isLazy?: boolean;
+  batchSize?: number;
 }
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
@@ -53,7 +54,7 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
   height = DEFAULT_ITEM_HEIGHT,
   apiKey,
   isLazy = false,
-  batchSize = BUFFER_SIZE * 2 + 1
+  batchSize = BUFFER_SIZE * 2 + 1,
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
@@ -63,10 +64,11 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const videoRef = useRef<Video | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!apiKey) return;
-    fetch('https://release.reelup.io/api/reels-data', {
+    fetch("https://release.reelup.io/api/reels-data", {
       method: "GET",
       headers: {
         "X-Reelup-Api-Key": apiKey,
@@ -77,6 +79,7 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
+        setLoading(false);
         return response.json();
       })
       .then((data) => {
@@ -85,13 +88,14 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
           isLoaded: false,
         }));
         setVideos(initialVideos);
+        setLoading(false);
       })
       .catch((error) => {
         console.error("Error fetching videos:", error);
+        setLoading(false);
       });
   }, []);
 
-  // Update visible indices when active index changes
   useEffect(() => {
     if (!isLazy) return;
 
@@ -103,8 +107,7 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
     );
 
     setVisibleIndices(newVisibleIndices);
-    
-    // Mark videos as loaded
+
     setVideos((prevVideos) =>
       prevVideos.map((video, index) => ({
         ...video,
@@ -114,7 +117,7 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
   }, [activeIndex, videos.length, isLazy]);
 
   const viewabilityConfig: ViewabilityConfig = {
-    itemVisiblePercentThreshold: 50,
+    itemVisiblePercentThreshold: 80,
     minimumViewTime: 300,
   };
 
@@ -151,7 +154,9 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
 
     if (!shouldRenderItem(index)) {
       return (
-        <View style={[dynamicStyles.itemContainer, dynamicStyles.placeholder]} />
+        <View
+          style={[dynamicStyles.itemContainer, dynamicStyles.placeholder]}
+        />
       );
     }
 
@@ -165,7 +170,11 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
           style={[dynamicStyles.itemWrapper, { transform: [{ scale }] }]}
         >
           <Image
-            source={{ uri: item.thumbnail }}
+            source={
+              item.thumbnail
+                ? { uri: item.thumbnail }
+                : require("../../assets/icon.png")
+            }
             style={dynamicStyles.thumbnail}
             resizeMode="cover"
           />
@@ -179,7 +188,6 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
     );
   };
 
-  // ... rest of the component remains the same ...
   const handleVideoPress = (video: VideoItem) => {
     setSelectedVideo(video);
     setModalVisible(true);
@@ -260,35 +268,61 @@ export const VideoCarousel: React.FC<VideoCarouselProps> = ({
       </Modal>
     );
   };
+  const onScroll = (event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const visibleIndex = Math.round(offsetX / width);
 
-  if (!apiKey) return (
-    <View style={dynamicStyles.noapicont}>
-      <Text>Please pass value of api key</Text>
-    </View>
-  );
+    const start = Math.max(0, visibleIndex - BUFFER_SIZE);
+    const end = Math.min(videos.length - 1, visibleIndex + BUFFER_SIZE);
 
+    const newVisibleIndices = Array.from(
+      { length: end - start + 1 },
+      (_, i) => start + i
+    );
+
+    setVisibleIndices(newVisibleIndices);
+
+    setVideos((prevVideos) =>
+      prevVideos.map((video, index) => ({
+        ...video,
+        isLoaded: video.isLoaded || newVisibleIndices.includes(index),
+      }))
+    );
+  };
+
+  if (!apiKey)
+    return (
+      <View style={dynamicStyles.noapicont}>
+        <Text>Please pass value of api key</Text>
+        <ActivityIndicator color={"black"} />
+      </View>
+    );
+  if (loading)
+    return (
+      <View style={dynamicStyles.loadingContainer}>
+        <Text>Loading...</Text>
+        <ActivityIndicator color={"black"} size={20} />
+      </View>
+    );
   return (
     <View style={dynamicStyles.container}>
-     <AnimatedFlatList
-  ref={flatListRef}
-  data={videos}
-  renderItem={({ item, index }: any) => renderItem(item, index, scrollX)}
-  keyExtractor={(item: any) => item.id}
-  horizontal
-  pagingEnabled
-  showsHorizontalScrollIndicator={false}
-  snapToInterval={width}
-  decelerationRate="fast"
-  viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
-  onScroll={Animated.event(
-    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-    { useNativeDriver: true }
-  )}
-  scrollEventThrottle={16}
-  initialNumToRender={isLazy ? batchSize : undefined} // Use batchSize here
-  maxToRenderPerBatch={isLazy ? batchSize : undefined} // Use batchSize here
-  windowSize={isLazy ? batchSize : undefined} // Use batchSize here
-/>
+      <AnimatedFlatList
+        ref={flatListRef}
+        data={videos}
+        renderItem={({ item, index }: any) => renderItem(item, index, scrollX)}
+        keyExtractor={(item: any) => item.id}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={width}
+        decelerationRate="fast"
+        viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        initialNumToRender={isLazy ? batchSize : undefined}
+        maxToRenderPerBatch={isLazy ? batchSize : undefined}
+        windowSize={isLazy ? batchSize : undefined}
+      />
 
       {showControls && renderProgressBar()}
       {renderVideoModal()}
@@ -300,10 +334,12 @@ const createStyles = (width: number, height: number) =>
   StyleSheet.create({
     container: {
       height: height + 4,
+      overflow: "hidden",
     },
     itemContainer: {
       width: width,
       height: height,
+      overflow: "hidden",
     },
     itemWrapper: {
       flex: 1,
@@ -383,12 +419,21 @@ const createStyles = (width: number, height: number) =>
       borderTopColor: "transparent",
     },
     noapicont: {
-      width: width/3,
-      height: height/3,
+      width: width / 3,
+      height: height / 3,
       margin: 2,
       borderRadius: 8,
       backgroundColor: "lightgray",
-      justifyContent: 'center',
-      alignItems: 'center'
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    loadingContainer: {
+      width: width,
+      height: height,
+      margin: 2,
+      borderRadius: 8,
+      backgroundColor: "lightgray",
+      justifyContent: "center",
+      alignItems: "center",
     },
   });
